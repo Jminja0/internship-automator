@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+
+.env
+profile.json
+
+data/*.db
+
+.vscode/
+.idea/
+data/*.csv
