@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+profile.json
+service_account.json
+*.json
+!profile.example.json
+data/*.db
+data/*.csv

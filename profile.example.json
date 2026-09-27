@@ -1,0 +1,12 @@
+{
+  "first_name": "Jonah",
+  "last_name": "Minjarez",
+  "email": "minjarezjonah@gmail.com",
+  "phone": "915-315-0403",
+  "linkedin_url": "https://linkedin.com/in/jonah-minjarez-18a4b735b",
+  "github_url": "https://github.com/Jminja0",
+  "resume_path": "/absolute/path/to/resume.pdf",
+  "school": "North Seattle College",
+  "google_sheet_id": "1TkUUJtFnfPtY5HLY9OrWw3NPN0yAFKUJauFZTAQ0ECI",
+  "google_credentials_path": "/absolute/path/to/service_account.json"
+}
