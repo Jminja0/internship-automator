@@ -1,5 +1,6 @@
 import csv
 import argparse
+import datetime
 
 from src.internships.fetch import fetch_internships
 from src.internships.filter import filter_internships
@@ -10,7 +11,12 @@ from src.database import (
     update_status,
 )
 from src.applications.autofill import apply_to_listing, load_profile
-from src.sheets import get_worksheet, upsert_application
+from src.sheets import (
+    SOURCE_LABEL,
+    STATUS_LABELS,
+    get_worksheet,
+    upsert_application,
+)
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -94,17 +100,15 @@ def run_apply(profile_path):
 
 
 def run_resync(profile_path):
-    """Re-push every already-processed application's status to the sheet.
-
-    Useful after fixing a Sheets-related bug -- catches up any
-    applications whose status was saved locally but never made it
-    to the sheet because of an earlier error.
-    """
+    """Batch-sync every processed application's status to Google Sheets."""
 
     initialize_database()
     profile = load_profile(profile_path)
 
-    if not (profile.get("google_sheet_id") and profile.get("google_credentials_path")):
+    if not (
+        profile.get("google_sheet_id")
+        and profile.get("google_credentials_path")
+    ):
         print("No Google Sheet configured in profile.json -- nothing to resync.")
         return
 
@@ -114,7 +118,11 @@ def run_resync(profile_path):
         worksheet_gid=profile.get("google_worksheet_gid"),
     )
 
-    applications = [a for a in get_applications() if a["status"] != "new"]
+    applications = [
+        application
+        for application in get_applications()
+        if application["status"] != "new"
+    ]
 
     if not applications:
         print("No processed applications to resync yet.")
@@ -122,11 +130,102 @@ def run_resync(profile_path):
 
     print(f"Resyncing {len(applications)} application(s) to the sheet...")
 
+    updated_count, added_count = batch_upsert_applications(
+        worksheet,
+        applications,
+    )
+
+    print(
+        f"Done. Updated {updated_count} existing application(s) "
+        f"and added {added_count} new application(s)."
+    )
+def batch_upsert_applications(worksheet, applications):
+    """Update and append applications using one Sheets batch request."""
+
+    sheet_values = worksheet.get_all_values()
+
+    # Application URLs are stored in column F, which has index 5.
+    url_to_row = {}
+
+    for row_number, row in enumerate(sheet_values, start=1):
+        if len(row) > 5 and row[5]:
+            url_to_row[row[5].strip()] = row_number
+
+    changes = []
+    new_rows = []
+    updated_count = 0
+    today = datetime.date.today().isoformat()
+
     for application in applications:
-        upsert_application(worksheet, application, application["status"])
+        apply_url = application["apply_url"].strip()
+        status_label = STATUS_LABELS.get(
+            application["status"],
+            application["status"],
+        )
 
-    print("Done.")
+        existing_row_number = url_to_row.get(apply_url)
 
+        if existing_row_number:
+            existing_row = sheet_values[existing_row_number - 1]
+            current_status = (
+                existing_row[4]
+                if len(existing_row) > 4
+                else ""
+            )
+
+            # Avoid sending an update when the status is already correct.
+            if current_status != status_label:
+                changes.append(
+                    {
+                        "range": f"E{existing_row_number}",
+                        "values": [[status_label]],
+                    }
+                )
+                updated_count += 1
+
+            continue
+
+        new_row_number = len(sheet_values) + len(new_rows) + 1
+
+        new_row = [
+            application["company"],
+            application["position"],
+            today,
+            SOURCE_LABEL,
+            status_label,
+            apply_url,
+            "",
+            "",
+            (
+                f'=IF(C{new_row_number}="","",'
+                f'TODAY()-C{new_row_number})'
+            ),
+            "",
+        ]
+
+        new_rows.append(new_row)
+
+        # Prevent duplicate URLs from being added during the same resync.
+        url_to_row[apply_url] = new_row_number
+
+    if new_rows:
+        first_new_row = len(sheet_values) + 1
+        last_new_row = first_new_row + len(new_rows) - 1
+
+        changes.append(
+            {
+                "range": f"A{first_new_row}:J{last_new_row}",
+                "values": new_rows,
+            }
+        )
+
+    if changes:
+        worksheet.batch_update(
+            changes,
+            value_input_option="USER_ENTERED",
+        )
+
+    return updated_count, len(new_rows)
 
 def main():
     args = parse_arguments()
