@@ -155,6 +155,24 @@ class FilterTests(unittest.TestCase):
                          "Louisville, KY", "New York, NY"):
             self.assertFalse(is_target_location({"locations": [location]}), location)
 
+    def test_all_washington_state_locations_are_accepted(self):
+        for location in (
+            "Spokane, WA", "Vancouver, WA", "Yakima, Washington",
+            "Washington State", "Washington, United States", "WA, United States",
+        ):
+            self.assertTrue(is_target_location({"locations": [location]}), location)
+
+    def test_washington_dc_and_non_washington_locations_are_rejected(self):
+        for location in (
+            "Washington, DC", "Washington D.C.", "District of Columbia",
+            "Vancouver, BC", "Portland, OR",
+        ):
+            self.assertFalse(is_target_location({"locations": [location]}), location)
+
+    def test_remote_locations_are_accepted(self):
+        for location in ("Remote", "Remote - US", "US Remote", "Fully Remote"):
+            self.assertTrue(is_target_location({"locations": [location]}), location)
+
     def test_hidden_simplify_listing_is_excluded(self):
         self.assertFalse(self.matches(
             source="simplify", terms=["Summer 2027"], is_visible=False))

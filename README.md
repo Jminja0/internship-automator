@@ -33,7 +33,8 @@ Matches are saved to SQLite and exported to `data/matching_internships.csv`.
 ## How matching works
 
 A posting is kept only if it is active, software-related, in the Seattle area
-(or remote), recent, and an internship for the right term.
+(or anywhere else in Washington state, or remote), recent, and an internship
+for the right term.
 
 - **Internship detection** uses whole-word matches on the job *title*
   (`intern`, `internship`, `co-op`), so descriptions mentioning "internal

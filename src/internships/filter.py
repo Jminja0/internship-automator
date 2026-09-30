@@ -26,6 +26,13 @@ CITY_RE = re.compile(r"\b(" + "|".join(TARGET_CITIES) + r")\b")
 STATE_RE = re.compile(r",\s*([a-z]{2})\b(?!\w)")
 # "us" is a country code ("Seattle, US"), not another state.
 WASHINGTON_TOKENS = {"wa", "us"}
+WASHINGTON_STATE_RE = re.compile(
+    r"(?:\bwashington(?:\s+state)?\b|(?:^|,\s*)wa\b)", re.IGNORECASE
+)
+WASHINGTON_DC_RE = re.compile(
+    r"\bwashington\s*,?\s*(?:d\.?c\.?|district of columbia)\b",
+    re.IGNORECASE,
+)
 
 
 def is_active(internship):
@@ -76,6 +83,11 @@ def _is_target_location(location):
     location_lower = location.lower()
     if "remote" in location_lower:
         return True
+    # Accept anywhere in Washington state, including locations such as
+    # "Spokane, WA" and "Washington, United States", but not Washington, DC.
+    if (WASHINGTON_STATE_RE.search(location_lower)
+            and not WASHINGTON_DC_RE.search(location_lower)):
+        return True
     if not CITY_RE.search(location_lower):
         return False
     state = STATE_RE.search(location_lower)
@@ -83,7 +95,7 @@ def _is_target_location(location):
 
 
 def is_target_location(internship):
-    """Return True for Seattle-area or remote positions."""
+    """Return True for Washington-state or remote positions."""
     return any(_is_target_location(loc) for loc in internship.get("locations", []))
 
 
