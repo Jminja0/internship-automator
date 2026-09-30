@@ -1,45 +1,58 @@
-import csv
 import argparse
-import datetime
+import csv
+import sys
+from pathlib import Path
 
-from src.internships.fetch import fetch_internships
-from src.internships.filter import filter_internships
 from src.database import (
+    get_applications,
+    get_first_seen_map,
     initialize_database,
     save_internships,
-    get_applications,
     update_status,
 )
-from src.applications.autofill import apply_to_listing, load_profile
-from src.sheets import (
-    SOURCE_LABEL,
-    STATUS_LABELS,
-    get_worksheet,
-    upsert_application,
-)
+from src.internships.fetch import deduplicate, fetch_internships
+from src.internships.filter import FUNNEL_STAGES, filter_funnel, filter_internships
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+CSV_PATH = PROJECT_ROOT / "data" / "matching_internships.csv"
+DEFAULT_PROFILE = str(PROJECT_ROOT / "profile.json")
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Find and track internships.")
 
     parser.add_argument(
-        "--filter", 
-        action="store_true", 
-        help="Filter internships based on criteria.")
+        "--filter",
+        action="store_true",
+        help="Deprecated and ignored: filters are always applied.")
+    parser.add_argument(
+        "--sources",
+        default=None,
+        help="Path to source configuration (default: sources.json).")
+    parser.add_argument(
+        "--max-age-days",
+        type=int,
+        default=30,
+        help="Exclude postings older than this many days (default: 30).")
 
     subparsers = parser.add_subparsers(
         dest="command")
 
     list_parser = subparsers.add_parser(
-        "list", 
-        help="List all internships.")
+        "list",
+        help="List tracked applications from the local database.")
+    list_parser.add_argument(
+        "--status",
+        default=None,
+        help="Only show applications with this status (e.g. new, filled).")
 
     apply_parser = subparsers.add_parser(
         "apply",
         help="Open each new application one at a time and track it.")
     apply_parser.add_argument(
         "--profile",
-        default="profile.json",
+        default=DEFAULT_PROFILE,
         help="Path to your profile JSON (see profile.example.json).")
 
     resync_parser = subparsers.add_parser(
@@ -47,15 +60,53 @@ def parse_arguments():
         help="Re-push every processed application's status to the Google Sheet.")
     resync_parser.add_argument(
         "--profile",
-        default="profile.json",
+        default=DEFAULT_PROFILE,
         help="Path to your profile JSON (see profile.example.json).")
 
     return parser.parse_args()
 
 
+def open_worksheet(profile):
+    """Open the configured Google Sheet tab, or return None if not configured."""
+    if not (profile.get("google_sheet_id") and profile.get("google_credentials_path")):
+        return None
+
+    # Imported lazily: gspread is only needed when a sheet is configured.
+    from src.sheets import get_worksheet
+
+    return get_worksheet(
+        profile["google_credentials_path"],
+        profile["google_sheet_id"],
+        worksheet_gid=profile.get("google_worksheet_gid"),
+    )
+
+
+def run_list(status=None):
+    """Print tracked applications."""
+
+    initialize_database()
+    applications = get_applications(status=status)
+
+    if not applications:
+        print("No applications tracked yet." if not status
+              else f"No applications with status {status!r}.")
+        return
+
+    for application in applications:
+        print(
+            f"[{application['status']:<11}] "
+            f"{application['company']}: {application['position']}\n"
+            f"              {application['apply_url']}"
+        )
+    print(f"\n{len(applications)} application(s).")
+
+
 def run_apply(profile_path):
     """Open 'new' applications one at a time, filling what's supported,
     and sync each one's status to your Google Sheet if configured."""
+
+    # Imported lazily: Playwright is only needed for this command.
+    from src.applications.autofill import apply_to_listing, load_profile
 
     initialize_database()
     profile = load_profile(profile_path)
@@ -65,13 +116,9 @@ def run_apply(profile_path):
         print("No new applications to open. Run without a subcommand first.")
         return
 
-    worksheet = None
-    if profile.get("google_sheet_id") and profile.get("google_credentials_path"):
-        worksheet = get_worksheet(
-            profile["google_credentials_path"],
-            profile["google_sheet_id"],
-            worksheet_gid=profile.get("google_worksheet_gid"),
-        )
+    worksheet = open_worksheet(profile)
+    if worksheet:
+        from src.sheets import upsert_application
 
     print(f"Found {len(applications)} new application(s).")
     start = input("Start going through them? [y/N]: ").strip().lower()
@@ -92,37 +139,41 @@ def run_apply(profile_path):
         if choice != "y":
             continue
 
-        result = apply_to_listing(url, profile)
+        try:
+            result = apply_to_listing(url, profile)
+        except Exception as error:
+            # One page failing to load must not abort the whole session; the
+            # application stays 'new' so it can be retried on the next run.
+            print(f"Could not process {label}: {error}")
+            print("Left as 'new'.")
+            continue
+
         update_status(application["id"], result)
 
         if worksheet:
-            upsert_application(worksheet, application, result)
+            try:
+                upsert_application(worksheet, application, result)
+            except Exception as error:
+                print(f"Saved locally, but the sheet update failed: {error}")
+                print("Run `python3 main.py resync` later to push it.")
 
 
 def run_resync(profile_path):
     """Batch-sync every processed application's status to Google Sheets."""
 
+    from src.applications.autofill import load_profile
+    from src.sheets import batch_upsert_applications
+
     initialize_database()
     profile = load_profile(profile_path)
 
-    if not (
-        profile.get("google_sheet_id")
-        and profile.get("google_credentials_path")
-    ):
+    worksheet = open_worksheet(profile)
+    if worksheet is None:
         print("No Google Sheet configured in profile.json -- nothing to resync.")
         return
 
-    worksheet = get_worksheet(
-        profile["google_credentials_path"],
-        profile["google_sheet_id"],
-        worksheet_gid=profile.get("google_worksheet_gid"),
-    )
-
-    applications = [
-        application
-        for application in get_applications()
-        if application["status"] != "new"
-    ]
+    applications = get_applications()
+    applications = [a for a in applications if a["status"] != "new"]
 
     if not applications:
         print("No processed applications to resync yet.")
@@ -139,130 +190,16 @@ def run_resync(profile_path):
         f"Done. Updated {updated_count} existing application(s) "
         f"and added {added_count} new application(s)."
     )
-def batch_upsert_applications(worksheet, applications):
-    """Update and append applications using one Sheets batch request."""
 
-    sheet_values = worksheet.get_all_values()
 
-    # Application URLs are stored in column F, which has index 5.
-    url_to_row = {}
+def export_csv(matches, path=CSV_PATH):
+    """Write matching internships to a CSV file."""
 
-    for row_number, row in enumerate(sheet_values, start=1):
-        if len(row) > 5 and row[5]:
-            url_to_row[row[5].strip()] = row_number
-
-    changes = []
-    new_rows = []
-    updated_count = 0
-    today = datetime.date.today().isoformat()
-
-    for application in applications:
-        apply_url = application["apply_url"].strip()
-        status_label = STATUS_LABELS.get(
-            application["status"],
-            application["status"],
-        )
-
-        existing_row_number = url_to_row.get(apply_url)
-
-        if existing_row_number:
-            existing_row = sheet_values[existing_row_number - 1]
-            current_status = (
-                existing_row[4]
-                if len(existing_row) > 4
-                else ""
-            )
-
-            # Avoid sending an update when the status is already correct.
-            if current_status != status_label:
-                changes.append(
-                    {
-                        "range": f"E{existing_row_number}",
-                        "values": [[status_label]],
-                    }
-                )
-                updated_count += 1
-
-            continue
-
-        new_row_number = len(sheet_values) + len(new_rows) + 1
-
-        new_row = [
-            application["company"],
-            application["position"],
-            today,
-            SOURCE_LABEL,
-            status_label,
-            apply_url,
-            "",
-            "",
-            (
-                f'=IF(C{new_row_number}="","",'
-                f'TODAY()-C{new_row_number})'
-            ),
-            "",
-        ]
-
-        new_rows.append(new_row)
-
-        # Prevent duplicate URLs from being added during the same resync.
-        url_to_row[apply_url] = new_row_number
-
-    if new_rows:
-        first_new_row = len(sheet_values) + 1
-        last_new_row = first_new_row + len(new_rows) - 1
-
-        changes.append(
-            {
-                "range": f"A{first_new_row}:J{last_new_row}",
-                "values": new_rows,
-            }
-        )
-
-    if changes:
-        worksheet.batch_update(
-            changes,
-            value_input_option="USER_ENTERED",
-        )
-
-    return updated_count, len(new_rows)
-
-def main():
-    args = parse_arguments()
-
-    if args.command == "apply":
-        run_apply(args.profile)
-        return
-
-    if args.command == "resync":
-        run_resync(args.profile)
-        return
-
-    print(args)
-    print("Fetching internships...")
-
-    internships = fetch_internships()
-
-    print(f"Found {len(internships)} total internships.")
-    print(type(internships))
-    matches = filter_internships(internships)
-
-    print(f"\nFound {len(matches)} matching internships.\n")
-
-    initialize_database()
-
-    new_count = save_internships(matches)
-
-    print(f"{new_count} internships were new.")
-
-    # CSV export
     fieldnames = ["Company", "Position", "Location", "Apply URL"]
+    path.parent.mkdir(parents=True, exist_ok=True)
 
-    filename = "data/matching_internships.csv"
-
-    with open(filename, "w", newline="", encoding="utf-8") as file:
+    with open(path, "w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
-
         writer.writeheader()
 
         for internship in matches:
@@ -275,7 +212,64 @@ def main():
                 }
             )
 
-    print(f"Saved {len(matches)} matches to {filename} successfully!")
+
+def print_funnel(funnel):
+    """Show how many postings each source lost at each filter stage."""
+
+    width = max([len("source")] + [len(label) for label in funnel])
+    print(f"\n{'source':<{width}}  " + "  ".join(f"{s:>8}" for s in FUNNEL_STAGES))
+    for label, counts in sorted(funnel.items()):
+        print(f"{label:<{width}}  " + "  ".join(f"{counts[s]:>8}" for s in FUNNEL_STAGES))
+
+
+def run_scan(sources_path, max_age_days):
+    """Fetch, filter, deduplicate, store, and export matching internships."""
+
+    print("Fetching internships...")
+    internships = fetch_internships(sources_path)
+    print(f"Found {len(internships)} total postings.")
+
+    initialize_database()
+
+    # Filter first, deduplicate second: see `deduplicate` for why the order
+    # matters. `first_seen` ages out undated postings (Lever) that this
+    # scanner has been seeing for longer than the age limit.
+    first_seen = get_first_seen_map()
+    print_funnel(filter_funnel(internships, max_age_days, first_seen))
+    matches = deduplicate(
+        filter_internships(
+            internships,
+            max_age_days=max_age_days,
+            first_seen_by_id=first_seen,
+        )
+    )
+    print(f"\nFound {len(matches)} matching internships.\n")
+
+    new_count = save_internships(matches)
+    print(f"{new_count} internships were new.")
+
+    export_csv(matches)
+    print(f"Saved {len(matches)} matches to {CSV_PATH} successfully!")
+
+
+def main():
+    args = parse_arguments()
+
+    try:
+        if args.command == "list":
+            run_list(args.status)
+        elif args.command == "apply":
+            run_apply(args.profile)
+        elif args.command == "resync":
+            run_resync(args.profile)
+        else:
+            if args.max_age_days < 0:
+                sys.exit("--max-age-days must be zero or greater.")
+            run_scan(args.sources, args.max_age_days)
+    except FileNotFoundError as error:
+        sys.exit(str(error))
+    except KeyboardInterrupt:
+        sys.exit("\nInterrupted.")
 
 
 if __name__ == "__main__":

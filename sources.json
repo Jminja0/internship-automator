@@ -1,0 +1,398 @@
+{
+  "sources": [
+    {
+      "provider": "simplify",
+      "name": "SimplifyJobs"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Docugami",
+      "board": "docugami"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Truveta",
+      "board": "truveta"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "SpaceX",
+      "board": "spacex"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Stoke Space",
+      "board": "stokespacetechnologies"
+    },
+    {
+      "provider": "lever",
+      "name": "Palantir",
+      "board": "palantir"
+    },
+    {
+      "provider": "ashby",
+      "name": "1Password",
+      "board": "1password"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "A Thinking Ape",
+      "board": "athinkingape"
+    },
+    {
+      "provider": "lever",
+      "name": "Actian",
+      "board": "actian"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Ada",
+      "board": "ada18"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Affirm",
+      "board": "affirm"
+    },
+    {
+      "provider": "lever",
+      "name": "Aledade",
+      "board": "aledade"
+    },
+    {
+      "provider": "lever",
+      "name": "AllTrails",
+      "board": "alltrails"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Anduril",
+      "board": "andurilindustries"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Arine",
+      "board": "arine"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Armada",
+      "board": "armada"
+    },
+    {
+      "provider": "lever",
+      "name": "ArteraAI",
+      "board": "artera"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Atoms",
+      "board": "cssmerge"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Axon",
+      "board": "axontalentcommunity"
+    },
+    {
+      "provider": "ashby",
+      "name": "Binance",
+      "board": "binance.us"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Brave",
+      "board": "brave"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Bugcrowd",
+      "board": "bugcrowd"
+    },
+    {
+      "provider": "lever",
+      "name": "CALSTART",
+      "board": "calstart"
+    },
+    {
+      "provider": "ashby",
+      "name": "Clipboard Health",
+      "board": "clipboard"
+    },
+    {
+      "provider": "ashby",
+      "name": "Colonist",
+      "board": "colonist"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Commvault",
+      "board": "commvault"
+    },
+    {
+      "provider": "ashby",
+      "name": "Confluent",
+      "board": "confluent"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Constant Contact",
+      "board": "constantcontact"
+    },
+    {
+      "provider": "ashby",
+      "name": "Deepgram",
+      "board": "deepgram"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "DoorDash",
+      "board": "doordashusa"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Duolingo",
+      "board": "duolingounirecruitment"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Echodyne",
+      "board": "echodynecorp"
+    },
+    {
+      "provider": "lever",
+      "name": "Endpoint Clinical",
+      "board": "endpointclinical"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Forerunner",
+      "board": "forerunner"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Gametime",
+      "board": "gametimeunited"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Geospatial Consulting Group International",
+      "board": "geocgi"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Globalization Partners",
+      "board": "globalizationpartners"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Glydways",
+      "board": "glydways"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "GoDaddy",
+      "board": "eventsandinterns"
+    },
+    {
+      "provider": "ashby",
+      "name": "GovSignals",
+      "board": "GovSignals"
+    },
+    {
+      "provider": "ashby",
+      "name": "Great Question",
+      "board": "greatquestion"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "iHerb",
+      "board": "iherb"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Impinj",
+      "board": "impinjexternal"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Impiricus",
+      "board": "impiricus"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "iSpot.tv",
+      "board": "ispottv"
+    },
+    {
+      "provider": "ashby",
+      "name": "Kong",
+      "board": "kong"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Marqeta",
+      "board": "mqreferrals"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Mercury",
+      "board": "mercury"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Meridian Partners",
+      "board": "morsecorpcoop"
+    },
+    {
+      "provider": "ashby",
+      "name": "Monarch Money",
+      "board": "monarchmoney"
+    },
+    {
+      "provider": "lever",
+      "name": "Nextech Systems",
+      "board": "nextech"
+    },
+    {
+      "provider": "lever",
+      "name": "NextGen Federal Systems",
+      "board": "nextgenfed"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "OfferUp",
+      "board": "offerup"
+    },
+    {
+      "provider": "ashby",
+      "name": "ONE Finance",
+      "board": "oneapp"
+    },
+    {
+      "provider": "ashby",
+      "name": "Ontic",
+      "board": "Ontic"
+    },
+    {
+      "provider": "ashby",
+      "name": "Outmarket AI",
+      "board": "outmarket"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Parachute Health",
+      "board": "parachutehealth"
+    },
+    {
+      "provider": "ashby",
+      "name": "Phil",
+      "board": "phil"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "PlanetScale",
+      "board": "planetscale"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Presence",
+      "board": "presencelearning"
+    },
+    {
+      "provider": "ashby",
+      "name": "Qumulo",
+      "board": "qumulo"
+    },
+    {
+      "provider": "ashby",
+      "name": "Realm",
+      "board": "realmalliance"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Rise8",
+      "board": "rise8"
+    },
+    {
+      "provider": "ashby",
+      "name": "Rivet Industries",
+      "board": "rivet"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Robinhood",
+      "board": "robinhood"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Scopely",
+      "board": "scopely"
+    },
+    {
+      "provider": "ashby",
+      "name": "Snowflake",
+      "board": "snowflake"
+    },
+    {
+      "provider": "ashby",
+      "name": "Socure",
+      "board": "socure"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Sparksoft",
+      "board": "sparksoftcorporation"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "SpecterOps",
+      "board": "specterops"
+    },
+    {
+      "provider": "ashby",
+      "name": "Super",
+      "board": "super.com"
+    },
+    {
+      "provider": "ashby",
+      "name": "Superhuman",
+      "board": "Superhuman%20Platform%20Inc"
+    },
+    {
+      "provider": "ashby",
+      "name": "Swarm Aero",
+      "board": "swarmaero"
+    },
+    {
+      "provider": "ashby",
+      "name": "The Browser Company",
+      "board": "the%20browser%20company"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "The Trade Desk",
+      "board": "thetradedesk"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Transcarent",
+      "board": "transcarent"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "Twilio",
+      "board": "twilio"
+    },
+    {
+      "provider": "greenhouse",
+      "name": "USAFacts",
+      "board": "usafacts"
+    },
+    {
+      "provider": "ashby",
+      "name": "WhatNot",
+      "board": "whatnot"
+    }
+  ]
+}

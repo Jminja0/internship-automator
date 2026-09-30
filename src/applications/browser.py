@@ -24,16 +24,16 @@ def open_browser(headless=False):
             browser.close()
 
 
-def goto(page, url, timeout_ms=15000):
+def goto(page, url, timeout_ms=15000, settle_ms=5000):
     """Navigate to a listing's apply URL and wait for it to settle.
 
-    page.goto() already waits for the page to load. The extra
-    networkidle wait below is best-effort only -- some sites (heavy
-    analytics/tracking) never go fully idle, so a timeout here is
-    expected and shouldn't stop the run.
+    The page is usable at DOMContentLoaded; waiting for the full `load` event
+    can stall on trackers and ads. The extra networkidle wait is best-effort
+    and short, because some sites (heavy analytics) never go fully idle and a
+    timeout here is expected, not an error.
     """
-    page.goto(url, timeout=timeout_ms)
+    page.goto(url, timeout=timeout_ms, wait_until="domcontentloaded")
     try:
-        page.wait_for_load_state("networkidle", timeout=timeout_ms)
+        page.wait_for_load_state("networkidle", timeout=settle_ms)
     except Exception:
         pass

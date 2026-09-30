@@ -10,14 +10,21 @@ every application yourself before sending it.
 """
 
 import json
+from pathlib import Path
 
 from .browser import goto, open_browser
 
 
 def load_profile(path="profile.json"):
     """Load applicant info from a JSON file (see profile.example.json)."""
-    with open(path, "r", encoding="utf-8") as file:
-        return json.load(file)
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"Profile not found: {path}. "
+            "Copy profile.example.json to profile.json and fill it in."
+        ) from None
 
 
 def detect_ats(url):
@@ -27,24 +34,38 @@ def detect_ats(url):
     return "unknown"
 
 
+# How long to wait for an optional field before deciding it isn't on the page.
+# Playwright's default is 30 s *per field*, which made a form missing a few
+# fields stall for minutes.
+FIELD_TIMEOUT_MS = 1500
+
+# Each entry lists the classic Greenhouse selector first, then the ids used by
+# the newer job-boards.greenhouse.io form (comma = "either one").
+GREENHOUSE_FIELDS = {
+    "first_name": "input[name='job_application[first_name]'], input#first_name",
+    "last_name": "input[name='job_application[last_name]'], input#last_name",
+    "email": "input[name='job_application[email]'], input#email",
+    "phone": "input[name='job_application[phone]'], input#phone",
+}
+GREENHOUSE_RESUME = "input[name='job_application[resume]'], input#resume"
+
+
 def fill_greenhouse_form(page, profile):
-    """Fill the common fields on a Greenhouse application form."""
+    """Fill the common fields on a Greenhouse application form.
 
-    # Greenhouse's embedded application form uses these field names
-    # on most job boards. Some postings add custom questions on top
-    # of these, which this function leaves untouched for you to fill.
-    field_map = {
-        "input[name='job_application[first_name]']": profile.get("first_name", ""),
-        "input[name='job_application[last_name]']": profile.get("last_name", ""),
-        "input[name='job_application[email]']": profile.get("email", ""),
-        "input[name='job_application[phone]']": profile.get("phone", ""),
-    }
+    Some postings add custom questions on top of these, which this function
+    leaves untouched for you to fill. Returns the names of fields it filled.
+    """
 
-    for selector, value in field_map.items():
+    filled = []
+
+    for key, selector in GREENHOUSE_FIELDS.items():
+        value = profile.get(key, "")
         if not value:
             continue
         try:
-            page.fill(selector, value)
+            page.fill(selector, value, timeout=FIELD_TIMEOUT_MS)
+            filled.append(key)
         except Exception:
             # Field not present on this particular posting -- skip it
             # rather than failing the whole run.
@@ -52,12 +73,18 @@ def fill_greenhouse_form(page, profile):
 
     resume_path = profile.get("resume_path")
     if resume_path:
-        try:
-            page.set_input_files(
-                "input[name='job_application[resume]']", resume_path
-            )
-        except Exception:
-            pass
+        if not Path(resume_path).is_file():
+            print(f"Warning: resume not found at {resume_path!r}; skipping upload.")
+        else:
+            try:
+                page.set_input_files(
+                    GREENHOUSE_RESUME, resume_path, timeout=FIELD_TIMEOUT_MS
+                )
+                filled.append("resume")
+            except Exception:
+                pass
+
+    return filled
 
 
 def apply_to_listing(url, profile, headless=False):
@@ -78,8 +105,9 @@ def apply_to_listing(url, profile, headless=False):
             print("'Apply' yourself to reach the actual form.")
             input("Once you're on the page with the fillable fields, press Enter to fill it...")
 
-            fill_greenhouse_form(page, profile)
-            print("Form filled. Review every field, then submit manually.")
+            filled = fill_greenhouse_form(page, profile)
+            print(f"Filled: {', '.join(filled) or 'nothing (no known fields found)'}.")
+            print("Review every field, then submit manually.")
             input("Press Enter here once you're done with this listing...")
             return "filled"
 

@@ -1,0 +1,8 @@
+{
+  "sources": [
+    {"provider": "simplify", "name": "SimplifyJobs"},
+    {"provider": "greenhouse", "name": "Example Co", "board": "company-board-token"},
+    {"provider": "ashby", "name": "Example Co", "board": "company-board-name"},
+    {"provider": "lever", "name": "Example Co", "board": "company-site-name"}
+  ]
+}

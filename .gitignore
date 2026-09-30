@@ -1,9 +1,11 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
+.DS_Store
+.env
 profile.json
-service_account.json
-*.json
-!profile.example.json
-data/*.db
-data/*.csv
+service_account*.json
+data/applications.db
+data/applications.db-journal
+data/
